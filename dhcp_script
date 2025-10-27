@@ -50,9 +50,9 @@ echo " Introduza o ip do DNS"
 read -p " DNS:" dns
 
 #backup
-echo " Backup do arquivo de configuração DHCP-SERVER"
-sudo cp /etc/dhcp/dhcp.conf /etc/dhcp/dhcp.conf.bak
-
+echo " Backup do arquivo de configuração DHCP-KEA"
+sudo mv /etc/kea/kea-dhcp4.conf /etc/kea/kea-dhcp4.conf.org
+sudo cat > /etc/kea/kea-dhcp4.conf << END
 {
 "Dhcp4": {
     "interfaces-config": {
@@ -72,7 +72,7 @@ sudo cp /etc/dhcp/dhcp.conf /etc/dhcp/dhcp.conf.bak
     "option-data": [
         {
             "name": "domain-name-servers",
-            "data": "192.168.5.0"
+            "data": "$dns"
         },
         {
             "name": "domain-name",
@@ -91,7 +91,7 @@ sudo cp /etc/dhcp/dhcp.conf /etc/dhcp/dhcp.conf.bak
             "option-data": [
                 {
                     "name": "routers",
-                    "data": "10.0.0.1"
+                    "data": "$ip_gateway"
                 }
             ]
         }
@@ -114,15 +114,16 @@ END
 
 #Inicio DHCP
 echo " A iniciar todas as configurações..."
-sudo systemctl enable --now dhcpd.service
-sudo systemctl start --now dhcpd.service
+sudo systemctl enable --now kea-dhcp4
+sudo systemctl start --now kea-dhcp4
 #ativar serviços firewall
 echo " Configurar a firewall..."
-sudo firewall-cmd --add-service=dhcp --permanent
+sudo firewall-cmd --add-service=dhcp
+sudo firewall-cmd --runtime-to-permanent
 sudo firewall-cmd --reload
 
 #veriicar os status
 echo " A verificar o status do DHCP..."
-sudo systemctl status dhcpd.service
+sudo systemctl status kea-dhcp4
 
 echo "PARABÉNS!!! Instalação realizada com sucesso."

@@ -113,4 +113,15 @@ $TTL 86400
 ;; define each hostname of an IP address
 1        IN  PTR     servidor1.empresa.local.
 90       IN  PTR     www.empresa.local.
+END
+sudo chown named:named /var/named/empresa.local.lan
+sudo chown named:named /var/named/5.168.192.db
+
+#segurança e permissões
+sudo systemctl enable --now named
+sudo firewall-cmd --add-service=dns
+sudo firewall-cmd --runtime-to-permanent
+sudo firewall-cmd --reload 
+sudo systemctl status named
+echo " Permisões adicionadas com sucesso"
 echo " DNS instalado e configurado com sucesso!!"

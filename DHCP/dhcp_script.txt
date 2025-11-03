@@ -76,11 +76,11 @@ sudo cat > /etc/kea/kea-dhcp4.conf << END
         },
         {
             "name": "domain-name",
-            "data": "srv.world"
+            "data": "empresa.local"
         },
         {
             "name": "domain-search",
-            "data": "srv.world"
+            "data": "empresa.local"
         }
     ],
     "subnet4": [

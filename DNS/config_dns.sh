@@ -1,11 +1,15 @@
+#!bin/bash
+
+echo " Instalar o dns..."
 sudo dnf -y install bind bind-utils
 
-
+#adicionado o caminho para o named.conf
 sudo cat > /etc/named.conf<< END
 // add : set ACL entry for local network
 acl internal-network {
         192.168.5.0/24;
 };
+echo " Internal-network adicionado com sucesso"
 
 options {
         // change ( listen all )
@@ -57,7 +61,7 @@ zone "." IN {
 include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";
 
-// add zones for your network and domain name
+echo " a iniciar configurações das zonas"
 zone "empresa.local" IN {
         type primary;
         file "empresa.local.lan";
@@ -69,7 +73,7 @@ zone "5.168.192.in-addr.arpa" IN {
         allow-update { none; };
 };
 END
-
+echo "Configurações das zonas concluidas com sucesso"
 sudo cat > /var/named/empresa.local.lan << END
 
 $TTL 86400
@@ -109,3 +113,4 @@ $TTL 86400
 ;; define each hostname of an IP address
 1        IN  PTR     servidor1.empresa.local.
 90       IN  PTR     www.empresa.local.
+echo " DNS instalado e configurado com sucesso!!"

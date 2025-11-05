@@ -39,13 +39,16 @@ kea_config="/etc/kea/kea-dhcp4.conf"
 sudo cp $kea_config ${kea_config}.bak
  
 echo "A configurar o ficheiro KEA DHCP..."
- 
+
+# Use EOF no final
 sudo cat > $kea_config <<EOF
 {
-"Dhcp4":{
-    "interfaces-config":{
-        "interfaces": ["ens34"]
-},
+"Dhcp4": {
+    "interfaces-config": [
+        {
+            "interfaces": [ "ens160" ]
+        }
+    ],
     "expired-leases-processing": {
         "reclaim-timer-wait-time": 10,
         "flush-reclaimed-timer-wait-time": 25,
@@ -60,7 +63,7 @@ sudo cat > $kea_config <<EOF
     "option-data": [
         {
             "name": "domain-name-servers",
-            "data": "8.8.8.8"
+            "data": "${dns}"
         },
         {
             "name": "domain-name",
@@ -74,17 +77,18 @@ sudo cat > $kea_config <<EOF
     "subnet4": [
         {
             "id": 1,
-            "subnet": "$subrede/24",
-            "pools": [ { "pool": "$ip_inicio - $ip_fim" } ],
+            "subnet": "${subrede}/24",
+            "pools": [ { "pool": "${ip_inicio} - ${ip_fim}" } ],
             "option-data": [
                 {
                     "name": "routers",
-                    "data": "$ip_gateway"
+                    "data": "${ip_gateway}"
                 }
             ]
         }
-    ],
-    "loggers": [
+    ]
+},  <-- ESTA VÍRGULA É ESSENCIAL PARA SEPARAR O DHCP4 DO LOGGERS
+"loggers": [
     {
         "name": "kea-dhcp4",
         "output-options": [
@@ -93,12 +97,10 @@ sudo cat > $kea_config <<EOF
             }
         ],
         "severity": "INFO",
-        "debuglevel": 0
+        "debugLevel": 0
     }
-  ]
+]
 }
-}
- 
 EOF
  
 # Iniciar e ativar serviço

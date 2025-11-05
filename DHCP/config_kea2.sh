@@ -1,13 +1,13 @@
 #!/bin/bash
  
 echo "Instalar o KEA DHCP Server..."
-sudo yum update -s
-sudo yum install -s kea
+sudo yum update 
+sudo yum install kea
  
 # Interface em Lan Segment
-sudo nmcli connection modify ens160 ipv4.method manual ipv4.addresses 192.168.5.1/24
-sudo nmcli connection down ens160
-sudo nmcli connection up ens160
+sudo nmcli connection modify ens224 ipv4.method manual ipv4.addresses 192.168.5.254/24
+sudo nmcli connection down ens224
+sudo nmcli connection up ens224
  
 # Recolha de IPs
 echo "Introduz a gama de IPs dentro da subnet 192.168.5.0/24"
@@ -39,16 +39,13 @@ kea_config="/etc/kea/kea-dhcp4.conf"
 sudo cp $kea_config ${kea_config}.bak
  
 echo "A configurar o ficheiro KEA DHCP..."
-
-# Use EOF no final
+ 
 sudo cat > $kea_config <<EOF
 {
-"Dhcp4": {
-    "interfaces-config": [
-        {
-            "interfaces": [ "ens160" ]
-        }
-    ],
+"Dhcp4":{
+    "interfaces-config":{
+        "interfaces": ["ens192"]
+},
     "expired-leases-processing": {
         "reclaim-timer-wait-time": 10,
         "flush-reclaimed-timer-wait-time": 25,
@@ -63,32 +60,31 @@ sudo cat > $kea_config <<EOF
     "option-data": [
         {
             "name": "domain-name-servers",
-            "data": "${dns}"
+            "data": "8.8.8.8"
         },
         {
             "name": "domain-name",
-            "data": "srv.world"
+            "data": "empresa.local"
         },
         {
             "name": "domain-search",
-            "data": "srv.world"
+            "data": "empresa.local"
         }
     ],
     "subnet4": [
         {
             "id": 1,
-            "subnet": "${subrede}/24",
-            "pools": [ { "pool": "${ip_inicio} - ${ip_fim}" } ],
+            "subnet": "$subrede/24",
+            "pools": [ { "pool": "$ip_inicio - $ip_fim" } ],
             "option-data": [
                 {
                     "name": "routers",
-                    "data": "${ip_gateway}"
+                    "data": "$ip_gateway"
                 }
             ]
         }
-    ]
-},  <-- ESTA VÍRGULA É ESSENCIAL PARA SEPARAR O DHCP4 DO LOGGERS
-"loggers": [
+    ],
+    "loggers": [
     {
         "name": "kea-dhcp4",
         "output-options": [
@@ -97,14 +93,16 @@ sudo cat > $kea_config <<EOF
             }
         ],
         "severity": "INFO",
-        "debugLevel": 0
+        "debuglevel": 0
     }
-]
+  ]
 }
+}
+ 
 EOF
  
 # Iniciar e ativar serviço
-echo "A iniciar o KEA..."
+echo "A iniciar o KEA DHCP Server..."
 sudo systemctl enable --now kea-dhcp4.service
 sudo systemctl restart kea-dhcp4.service
  
@@ -115,4 +113,4 @@ sudo firewall-cmd --reload
 # Verificar
 sudo systemctl status kea-dhcp4.service --no-pager
  
-echo "KEA configurado com sucesso!"
+echo "KEA DHCP configurado com sucesso!"

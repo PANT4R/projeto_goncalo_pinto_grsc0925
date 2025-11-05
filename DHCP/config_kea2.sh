@@ -5,9 +5,9 @@ sudo yum update -s
 sudo yum install -s kea
  
 # Interface em Lan Segment
-sudo nmcli connection modify ens34 ipv4.method manual ipv4.addresses 192.168.5.254/24
-sudo nmcli connection down ens34
-sudo nmcli connection up ens34
+sudo nmcli connection modify ens160 ipv4.method manual ipv4.addresses 192.168.5.1/24
+sudo nmcli connection down ens160
+sudo nmcli connection up ens160
  
 # Recolha de IPs
 echo "Introduz a gama de IPs dentro da subnet 192.168.5.0/24"

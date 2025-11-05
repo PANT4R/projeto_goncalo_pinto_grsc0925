@@ -1,67 +1,83 @@
-#!bin/bash
-
-echo " Instalar o dns..."
+#!/bin/bash
+set -e
+ 
+#Instalar dns Bind
+ 
 sudo dnf -y install bind bind-utils
-
-#adicionado o caminho para o named.conf
-sudo cat > /etc/named.conf<< END
-// add : set ACL entry for local network
+ 
+ 
+read -p "Introduz o Ip do server: (tem de ser dentro da network 192.168.5.0)" ip_server
+read -p "Introduz o Ip do server em www: (tem de ser dentro da network 192.168.5.0, nao pode ser igual ao server e nao pode estar dentro da lease do dhcp)" ip_server_www
+ 
+ 
+#Configurar a placa de rede
+sudo nmcli connection modify ens192 ipv4.addresses $ip_server/24
+sudo nmcli connection modify ens192 ipv4.method manual ipv4.gateway $ip_server
+sudo nmcli connection up ens192
+nmcli
+ 
+# Adicionar estas linhas para retirar o último octeto
+# O AWK separa a ip em octetos atraves dos pontos e faz print do 4 campo para dentro do last_octet
+ip_last_octet=$(echo $ip_server | awk -F'.' '{print $4}')
+ip_www_last_octet=$(echo $ip_server_www | awk -F'.' '{print $4}')
+ 
+ 
+#Aplicar as configurações caso o dns esteja sido instalado
+ 
+sudo cat > /etc/named.conf << END
+ 
+# configurar ACL para local network
+ 
 acl internal-network {
         192.168.5.0/24;
 };
-echo " Internal-network adicionado com sucesso"
-
+ 
 options {
-        // change ( listen all )
         listen-on port 53 { any; };
-        // change if need ( if not listen IPv6, set [none] )
-        listen-on-v6 { any; };
+        listen-on-v6 { none; };
         directory       "/var/named";
         dump-file       "/var/named/data/cache_dump.db";
         statistics-file "/var/named/data/named_stats.txt";
         memstatistics-file "/var/named/data/named_mem_stats.txt";
         secroots-file   "/var/named/data/named.secroots";
         recursing-file  "/var/named/data/named.recursing";
-        // add local network set on [acl] section above
-        // network range you allow to receive queries from hosts
         allow-query     { localhost; internal-network; };
-        // network range you allow to transfer zone files to clients
-        // add secondary DNS servers if it exist
         allow-transfer  { localhost; };
-
-        .....
-        .....
-
+ 
+        forwarders {
+            8.8.8.8;
+            1.1.1.1;
+        };
+        forward only;
+ 
         recursion yes;
-
+ 
         dnssec-validation yes;
-
+ 
         managed-keys-directory "/var/named/dynamic";
         geoip-directory "/usr/share/GeoIP";
-
+ 
         pid-file "/run/named/named.pid";
         session-keyfile "/run/named/session.key";
-
-        /* https://fedoraproject.org/wiki/Changes/CryptoPolicy */
-        include "/etc/crypto-policies/back-ends/bind.config";
 };
-
+ 
 logging {
         channel default_debug {
                 file "data/named.run";
                 severity dynamic;
         };
 };
-
+ 
 zone "." IN {
         type hint;
         file "named.ca";
 };
-
+ 
 include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";
-
-echo " a iniciar configurações das zonas"
+ 
+# Adiciona Zonas para a Network
+ 
 zone "empresa.local" IN {
         type primary;
         file "empresa.local.lan";
@@ -72,56 +88,69 @@ zone "5.168.192.in-addr.arpa" IN {
         file "5.168.192.db";
         allow-update { none; };
 };
+ 
 END
-echo "Configurações das zonas concluidas com sucesso"
+ 
 sudo cat > /var/named/empresa.local.lan << END
-
-$TTL 86400
+ 
+\$TTL 86400
 @   IN  SOA     servidor1.empresa.local. root.empresa.local. (
-        1762170738  ;Serial
+        1762172329  ;Serial
         3600        ;Refresh
         1800        ;Retry
         604800      ;Expire
         86400       ;Minimum TTL
 )
-        ;; define Name Server
-        IN  NS      servidor1.empresa.local.
-        ;; define Name Server's IP address
-        IN  A       192.168.5.1
-        ;; define Mail Exchanger Server
-        IN  MX 10   servidor1.empresa.local.
-
-;; define each IP address of a hostname
-servidor1     IN  A       192.168.5.1
-www           IN  A       192.168.5.90
-
-# if you don't use IPv6 and also suppress logs for IPv6 related, possible to change
-# set BIND to use only IPv4
+@        IN  NS      servidor1.empresa.local.
+ 
+servidor1  IN  A       $ip_server
+ 
+@        IN  MX 10   servidor1.empresa.local.
+ 
+dlp     IN  A       $ip_server
+ 
+ 
 END
+ 
 sudo cat > /var/named/5.168.192.db << END
-$TTL 86400
+ 
+\$TTL 86400
 @   IN  SOA     servidor1.empresa.local. root.empresa.local. (
-        1762170738  ;Serial
+        1762172329 ;Serial
         3600        ;Refresh
         1800        ;Retry
         604800      ;Expire
         86400       ;Minimum TTL
 )
-        ;; define Name Server
-        IN  NS      servidor1.empresa.local.
-
-;; define each hostname of an IP address
-1        IN  PTR     servidor1.empresa.local.
-90       IN  PTR     www.empresa.local.
+@        IN  NS      servidor1.empresa.local.
+ 
+$ip_last_octet          IN  PTR     servidor1.empresa.local.
+$ip_www_last_octet      IN  PTR     www.empresa.local.
+ 
 END
-sudo chown named:named /var/named/empresa.local.lan
-sudo chown named:named /var/named/5.168.192.db
-
-#segurança e permissões
-sudo systemctl enable --now named
-sudo firewall-cmd --add-service=dns
+ 
+# INICIAR BIND
+ 
+systemctl enable --now named
+ 
+# CONFIGURAR a Firewall
+ 
+sudo firewall-cmd --add-service=dns --permanent
 sudo firewall-cmd --runtime-to-permanent
-sudo firewall-cmd --reload 
-sudo systemctl status named
-echo " Permisões adicionadas com sucesso"
-echo " DNS instalado e configurado com sucesso!!"
+ 
+# Verificação do Nome e da Address
+ 
+dig empresa.local
+ 
+# Outro dig
+ 
+dig -x $ip_server
+ 
+# NSLOOKUP
+ 
+nslookup servidor1.empresa.local $ip_server
+ 
+#Ping Google
+ 
+ping www.google.com
+ 

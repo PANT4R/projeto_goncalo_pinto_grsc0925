@@ -16,7 +16,7 @@ sudo nmcli connection modify ens192 ipv4.method manual ipv4.gateway $ip_server
 sudo nmcli connection up ens192
 nmcli
  
-# Adicionar estas linhas para retirar o último octeto
+# Adicionar estas linhas para retirar o último octeto para o DNS
 # O AWK separa a ip em octetos atraves dos pontos e faz print do 4 campo para dentro do last_octet
 ip_last_octet=$(echo $ip_server | awk -F'.' '{print $4}')
 ip_www_last_octet=$(echo $ip_server_www | awk -F'.' '{print $4}')
